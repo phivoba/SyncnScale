@@ -1,14 +1,29 @@
+/*
+ * Author: Phi VoBa
+ * Last Updated: 02/04/15
+ * 
+ * TimeDisplay
+ * This application displays the system ID and system time.
+ * 1) To display this help info, enter "-H", "-h", "-?", or no parameter
+ * 2) To display the system time continuously, enter "-Tc" or "-tc"
+ * 3) To display the system time with a five second pause every ten second
+ *    interval, enter "-Tp" or "-tp"
+ */
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 
 #include <Windows.h>
 #include <string>
+#include <iostream>
 #include <wchar.h>
 #include <regex>
 #include <stdio.h>
 #include <Winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
+
+using namespace std;
 
 // Presents program help info to user (filename, revision, contact info, procedure)
 void getHelp(char** argv) {
@@ -52,6 +67,29 @@ int main(int argc, char** argv) {
 					WSACleanup();
 
 					SYSTEMTIME time;
+
+					/*INITIALIZE (do not display until:)
+					  a) the display cycle plateaus (dif between grab and display goes between margin)
+				  	  b) next 10 second interval (calculate exact wait time)*/
+
+					// a) the display cycle plateaus (dif between grab and display goes between margin)
+					bool noplateau = true;
+					while (noplateau) {
+						GetLocalTime(&time);
+						int ms1 = time.wSecond * 1000 + time.wMilliseconds;
+						GetLocalTime(&time);
+						int ms2 = time.wSecond * 1000 + time.wMilliseconds;
+						if (abs(ms1 - ms2) <= 10) {	// margin of 10ms
+							noplateau = false;
+						}
+					}
+
+					// b) next 10 second interval (calculate exact wait time)
+					GetLocalTime(&time);
+					int secwait = 10 - time.wSecond % 10;
+					int mswait = 1000 - time.wMilliseconds + (secwait * 1000);
+					Sleep(mswait);
+
 					switch (argv[i][2]) {
 					case 'c':	// ...continuously (constantly updated display of system time)
 						while (true) {
@@ -64,8 +102,10 @@ int main(int argc, char** argv) {
 						while (true) {
 							GetLocalTime(&time);
 							printf("%02d/%02d/%d, %02d:%02d:%02d.%d\r", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
+
 							if (time.wSecond % 10 == 0) {
-								Sleep(5000);	// every 10 seconds, pause the display for 5 seconds before resuming with current time
+								int pause = 5000 - time.wMilliseconds;
+								Sleep(pause);	// pause display for the remaining time until the next 10 second interval
 							}
 						}
 						break;
