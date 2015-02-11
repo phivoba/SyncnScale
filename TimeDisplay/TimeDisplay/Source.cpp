@@ -37,6 +37,18 @@ void getHelp(char** argv) {
 	printf("   interval, enter \"-Tp\" or \"-tp\"\n");
 }
 
+void displaydelay() {
+	SYSTEMTIME time;
+	GetLocalTime(&time);
+	int secwait = 10 - time.wSecond % 10;
+	int mswait = 1000 - time.wMilliseconds + (secwait * 1000);
+	printf("%04d\n", mswait);
+	Sleep(mswait);
+}
+
+void timecontinuous();
+
+void timepause();
 
 int main(int argc, char** argv) {
 	if (argc == 1) {	// if user passes no parameters
@@ -66,48 +78,15 @@ int main(int argc, char** argv) {
 					printf("%s\n", szPath);
 					WSACleanup();
 
-					SYSTEMTIME time;
-
-					/*INITIALIZE (do not display until:)
-					  a) the display cycle plateaus (dif between grab and display goes between margin)
-				  	  b) next 10 second interval (calculate exact wait time)*/
-
-					// a) the display cycle plateaus (dif between grab and display goes between margin)
-					bool noplateau = true;
-					while (noplateau) {
-						GetLocalTime(&time);
-						int ms1 = time.wSecond * 1000 + time.wMilliseconds;
-						GetLocalTime(&time);
-						int ms2 = time.wSecond * 1000 + time.wMilliseconds;
-						if (abs(ms1 - ms2) <= 10) {	// margin of 10ms
-							noplateau = false;
-						}
-					}
-
-					// b) next 10 second interval (calculate exact wait time)
-					GetLocalTime(&time);
-					int secwait = 10 - time.wSecond % 10;
-					int mswait = 1000 - time.wMilliseconds + (secwait * 1000);
-					Sleep(mswait);
+					//SYSTEMTIME time;
 
 					switch (argv[i][2]) {
 					case 'c':	// ...continuously (constantly updated display of system time)
-						while (true) {
-							GetLocalTime(&time);
-							printf("%02d/%02d/%d, %02d:%02d:%02d.%d\r", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
-						}
+						timecontinuous();
 						break;
 
 					case 'p':	// ...or with a pause (constant display for 5 seconds followed by a static frame for another 5 seconds, repeated)
-						while (true) {
-							GetLocalTime(&time);
-							printf("%02d/%02d/%d, %02d:%02d:%02d.%d\r", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
-
-							if (time.wSecond % 10 == 0) {
-								int pause = 5000 - time.wMilliseconds;
-								Sleep(pause);	// pause display for the remaining time until the next 10 second interval
-							}
-						}
+						timepause();
 						break;
 					}
 				}
@@ -117,6 +96,29 @@ int main(int argc, char** argv) {
 				printf("Not a valid parameter");
 				break;
 			}
+		}
+	}
+}
+
+void timecontinuous() {
+	SYSTEMTIME time;
+	displaydelay();
+	while (true) {
+		GetLocalTime(&time);
+		printf("%02d/%02d/%d, %02d:%02d:%02d.%d\r", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
+	}
+}
+
+void timepause() {
+	SYSTEMTIME time;
+	displaydelay();
+	while (true) {
+		GetLocalTime(&time);
+		printf("%02d/%02d/%d, %02d:%02d:%02d.%d\r", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
+
+		if (time.wSecond % 10 == 0) {
+			int pause = 5000 - time.wMilliseconds;
+			Sleep(pause);	// pause display for the remaining time until the next 10 second interval
 		}
 	}
 }
